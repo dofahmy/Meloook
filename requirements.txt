@@ -1,0 +1,5 @@
+telethon>=1.36,<2
+playwright>=1.55,<2
+requests>=2.32,<3
+pillow>=11,<13
+tzdata>=2025.2
