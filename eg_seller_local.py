@@ -1986,14 +1986,29 @@ def process_text(text, tag, keep_lines=False):
 # ============ البوت ============
 # Railway: use the existing Telethon StringSession if supplied.
 # Never print or log this secret.
-_SESSION_STRING = os.getenv("TELEGRAM_SESSION", "").strip()
+_SESSION_STRING = os.getenv("TELEGRAM_SESSION", "").strip().strip('\"').strip("'").strip()
+# Validation logs length only. Never print the session or any part of the secret.
+if _SESSION_STRING:
+    print(f"SESSION_DIAGNOSTIC: length={len(_SESSION_STRING)}, version_ok={_SESSION_STRING.startswith('1')}, whitespace={any(c.isspace() for c in _SESSION_STRING)}", flush=True)
+    try:
+        _validated_session = StringSession(_SESSION_STRING)
+    except Exception as exc:
+        raise RuntimeError(
+            "Invalid TELEGRAM_SESSION in this Railway deployment: "
+            f"length={len(_SESSION_STRING)}; expected 353 for a typical Telethon IPv4 StringSession. "
+            "Check the ACTIVE service Variables and latest deployment. "
+            "Paste ONLY the single line from railway_session.txt as the value, "
+            "then deploy staged variable changes. Never share the value."
+        ) from None
+else:
+    _validated_session = None
 _DEFAULT_SESSION = DATA_DIR / "forwarder_eg_session"
 if not _SESSION_STRING and not os.getenv("TELEGRAM_SESSION_NAME"):
     _old_session = BASE_DIR / "forwarder_eg_session.session"
     if _old_session.exists() and not _DEFAULT_SESSION.with_suffix(".session").exists():
         import shutil
         shutil.copy2(_old_session, _DEFAULT_SESSION.with_suffix(".session"))
-_SESSION_SOURCE = (StringSession(_SESSION_STRING) if _SESSION_STRING
+_SESSION_SOURCE = (_validated_session if _validated_session is not None
                    else os.getenv("TELEGRAM_SESSION_NAME", str(_DEFAULT_SESSION)))
 print("🔐 Telegram session source: " + ("TELEGRAM_SESSION (StringSession)" if _SESSION_STRING else "SQLite session file"), flush=True)
 client = TelegramClient(
